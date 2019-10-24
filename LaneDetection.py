@@ -6,7 +6,7 @@ import os
 from Camera import Camera
 
 
-class LaneKeepAssistSystem:
+class LaneDetection:
 
     thresh_rgb_r = (145, 255)
     thresh_hls_l = (145, 255)

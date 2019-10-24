@@ -28,7 +28,8 @@ class Camera:
     rev_perspective_transform_matrix = []
 
     def __init__(self):
-        self.calibrate()
+        # self.calibrate()
+        self.loadCameraProperties()
         self.perspective_transform_matrix = cv2.getPerspectiveTransform(self.perspective_src_points,
                                                                         self.perspective_dst_points)
         self.rev_perspective_transform_matrix = cv2.getPerspectiveTransform(self.perspective_dst_points,
@@ -66,11 +67,11 @@ class Camera:
             # np.savetxt('cameraDistCoeffs.csv', dist_coeffs)
             # np.savetxt('cameraCalibROI.csv', roi)
 
-    # def loadCameraProperties(self):
-    #     self.matrix = np.genfromtxt('cameraMatrix.csv')
-    #     self.optimal_matrix = np.genfromtxt('cameraOptMatrix.csv')
-    #     self.distortion_coeffs = np.genfromtxt('cameraDistCoeffs.csv')
-    #     self.ROI = np.genfromtxt('cameraCalibROI.csv')
+    def loadCameraProperties(self):
+        self.matrix = np.genfromtxt('cameraMatrix.csv')
+        self.optimal_matrix = np.genfromtxt('cameraOptimalMatrix.csv')
+        self.distortion_coeffs = np.genfromtxt('cameraDistortionCoeffs.csv')
+        self.ROI = np.genfromtxt('cameraROI.csv')
 
     def undistort(self, img):
         img_undist = cv2.undistort(img, self.matrix, self.distortion_coeffs, None, self.optimal_matrix)
