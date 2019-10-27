@@ -26,7 +26,7 @@ class LaneDetection:
     def find_lanes_rect(self, img_bin):
         image_size = self.camera.get_image_size()
         histogram = np.sum(img_bin[np.int(image_size[1] / 2):, :], axis=0)
-        out_img = np.dstack((img_bin, img_bin, img_bin)) * 255
+        # out_img = np.dstack((img_bin, img_bin, img_bin)) * 255
         mid_x = np.int(image_size[0] / 2)
 
         # average starting base for left and right line
@@ -96,6 +96,8 @@ class LaneDetection:
         else:
             left_fit_coeffs = np.polyfit(left_y, left_x, 2)
             right_fit_coeffs = np.polyfit(right_y, right_x, 2)
+
+        print(left_fit_coeffs)
 
         # Generate x and y values for plotting
         fit_y = np.linspace(0, image_size[0] - 1, image_size[0])

@@ -11,13 +11,13 @@ class Camera:
     distortion_coeffs = []
     ROI = []
 
-    image_size = (1296, 972)
+    image_size = (640, 480)
 
     chessboard_pattern = (7, 9)
     calibrate_imgs_path = glob.glob("./ccalib-test-images-5/*.jpg")
 
-    perspective_src_points = np.float32([[170, image_size[1]], [1164, image_size[1]],
-                                [688, image_size[1] * 0.55], [576, image_size[1] * 0.55]])
+    perspective_src_points = np.float32([[16, image_size[1]], [605, image_size[1]],
+                                [384, image_size[1] * 0.55], [256, image_size[1] * 0.55]])
 
     perspective_dst_points = np.float32([[image_size[0] / 4, image_size[1]],
                                 [image_size[0] * 3 / 4, image_size[1]],
