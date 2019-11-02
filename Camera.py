@@ -16,20 +16,23 @@ class Camera:
     chessboard_pattern = (7, 9)
     calibrate_imgs_path = glob.glob("./ccalib-test-images-5/*.jpg")
 
-    perspective_src_points = np.float32([[16, image_size[1]], [605, image_size[1]],
-                                [384, image_size[1] * 0.55], [256, image_size[1] * 0.55]])
+    # perspective_src_points = np.float32([[16, image_size[1]], [605, image_size[1]],
+    #                             [384, image_size[1] * 0.55], [256, image_size[1] * 0.55]])
+
+    perspective_src_points = np.float32([[0, 225], [397, 225],
+                                [333, 134], [218, 134]])
 
     perspective_dst_points = np.float32([[image_size[0] / 4, image_size[1]],
                                 [image_size[0] * 3 / 4, image_size[1]],
-                                [image_size[0] * 3 / 4, image_size[1] * 0.1],
-                                [image_size[0] / 4, image_size[1] * 0.1]])
+                                [image_size[0] * 3 / 4, 0],
+                                [image_size[0] / 4, 0]])
 
     perspective_transform_matrix = []
     rev_perspective_transform_matrix = []
 
     def __init__(self):
         # self.calibrate()
-        self.loadCameraProperties()
+        self.load_camera_properties()
         self.perspective_transform_matrix = cv2.getPerspectiveTransform(self.perspective_src_points,
                                                                         self.perspective_dst_points)
         self.rev_perspective_transform_matrix = cv2.getPerspectiveTransform(self.perspective_dst_points,
@@ -67,7 +70,7 @@ class Camera:
             # np.savetxt('cameraDistCoeffs.csv', dist_coeffs)
             # np.savetxt('cameraCalibROI.csv', roi)
 
-    def loadCameraProperties(self):
+    def load_camera_properties(self):
         self.matrix = np.genfromtxt('cameraMatrix.csv')
         self.optimal_matrix = np.genfromtxt('cameraOptimalMatrix.csv')
         self.distortion_coeffs = np.genfromtxt('cameraDistortionCoeffs.csv')
@@ -87,24 +90,6 @@ class Camera:
                                                                         self.perspective_dst_points)
 
     def perspective_transform(self, img):
-
-        srcPoints = np.float32([[170, self.image_size[1]], [1164, self.image_size[1]],
-                                [688, self.image_size[1] * 0.55], [576, self.image_size[1] * 0.55]])
-        # np.array([[self.imageSize[0] / 2 - 470, self.imageSize[1]],
-        #              [self.imageSize[0] / 2 + 470, self.imageSize[1]],
-        #              [self.imageSize[0] / 2 + 190, self.imageSize[1] / 2],
-        #              [self.imageSize[0] / 2 - 190, self.imageSize[1] / 2]], dtype=np.float32)
-
-        dstPoints = np.float32([[self.image_size[0] / 4, self.image_size[1]],
-                                [self.image_size[0] * 3 / 4, self.image_size[1]],
-                                [self.image_size[0] * 3 / 4, self.image_size[1] * 0.1],
-                                [self.image_size[0] / 4, self.image_size[1] * 0.1]])
-
-        # np.array([[self.imageSize[0] / 2 - 440, self.imageSize[1]],
-        #          [self.imageSize[0] / 2 + 440, self.imageSize[1]],
-        #          [self.imageSize[0] / 2 + 440, self.imageSize[1] / 2],
-        #          [self.imageSize[0] / 2 - 440, self.imageSize[1] / 2]], dtype=np.float32)
-
         img_transformed = cv2.warpPerspective(img, self.perspective_transform_matrix, self.image_size)
         # cv2.imwrite(self.sourceImg.replace('.png', '_result_cs_trans.png'), img_transformed)
         return img_transformed
@@ -113,11 +98,11 @@ class Camera:
         rev_img_transformed = cv2.warpPerspective(img, self.rev_perspective_transform_matrix, self.image_size)
         return rev_img_transformed
 
-    def laneBinary(self):
+    def lane_binary(self):
         pass
 
 
-    def colorTransforms(self, img):
+    def color_transforms(self, img):
         b, g, r = cv2.split(img)
         cv2.imwrite('samples/color_results/bgr/video_snap_1_b.png', b)
         cv2.imwrite('samples/color_results/bgr/video_snap_1_g.png', g)

@@ -1,3 +1,4 @@
 .idea/
 __pycache__/
 test-videos/
+.ipynb_checkpoints/
