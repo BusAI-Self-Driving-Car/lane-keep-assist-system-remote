@@ -19,8 +19,8 @@ class Camera:
     # perspective_src_points = np.float32([[16, image_size[1]], [605, image_size[1]],
     #                             [384, image_size[1] * 0.55], [256, image_size[1] * 0.55]])
 
-    perspective_src_points = np.float32([[0, 225], [397, 225],
-                                [333, 134], [218, 134]])
+    perspective_src_points = np.float32([[0, 290], [630, 350],
+                                [412, 165], [251, 165]])
 
     perspective_dst_points = np.float32([[image_size[0] / 4, image_size[1]],
                                 [image_size[0] * 3 / 4, image_size[1]],

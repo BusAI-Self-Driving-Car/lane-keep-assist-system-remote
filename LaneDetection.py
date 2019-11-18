@@ -97,7 +97,7 @@ class LaneDetection:
             left_fit_coeffs = np.polyfit(left_y, left_x, 2)
             right_fit_coeffs = np.polyfit(right_y, right_x, 2)
 
-        print(left_fit_coeffs)
+        # print(left_fit_coeffs)
 
         # Generate x and y values for plotting
         fit_y = np.linspace(0, image_size[0] - 1, image_size[0])
