@@ -1,8 +1,17 @@
 import threading
 from bluetooth import *
 import time
+import math
+
 
 from BluetoothServer import BluetoothServer
+
+with open("snap2_tiny.png", "rb") as image:
+    f = image.read()
+    b = bytearray(f)
+
+single_img_byte_packet_size = 400
+
 
 
 class BluetoothSendThread(threading.Thread):
@@ -14,10 +23,16 @@ class BluetoothSendThread(threading.Thread):
 
     def run(self):
         i = 1
-        while True:
-            self.socket.send(str(i))
-            i += 1
-            time.sleep(1)
+        # while True:
+        time.sleep(5)
+        self.socket.send(str(len(b)))
+        for i in range(math.ceil(len(b) / single_img_byte_packet_size)):
+            self.socket.send(bytes(b[i * single_img_byte_packet_size : (i+1) * single_img_byte_packet_size]))
+            print("Sending ", i)
+
+            # self.socket.send(str(i))
+            # i += 1
+            # time.sleep(1)
 
 
 class BluetoothReceiveThread(threading.Thread):
