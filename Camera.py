@@ -19,8 +19,8 @@ class Camera:
     # perspective_src_points = np.float32([[16, image_size[1]], [605, image_size[1]],
     #                             [384, image_size[1] * 0.55], [256, image_size[1] * 0.55]])
 
-    perspective_src_points = np.float32([[0, 290], [630, 350],
-                                [412, 165], [251, 165]])
+    perspective_src_points = np.float32([[0, 413], [640, 413],
+                                [380, 250], [262, 250]])
 
     perspective_dst_points = np.float32([[image_size[0] / 4, image_size[1]],
                                 [image_size[0] * 3 / 4, image_size[1]],
@@ -101,6 +101,13 @@ class Camera:
     def lane_binary(self):
         pass
 
+    def mark_roi(self, img):
+        out_img = img.copy()
+        for i in range(4):
+            out_img = cv2.line(out_img, tuple(self.perspective_src_points[i % 4]),
+                           tuple(self.perspective_src_points[(i + 1) % 4]), (0, 0, 255), 2)
+        return out_img
+
 
     def color_transforms(self, img):
         b, g, r = cv2.split(img)
@@ -124,5 +131,19 @@ class Camera:
 
     def get_image_size(self):
         return self.image_size
+
+    def get_perspective_src_points_to_str(self):
+        string = str(int(self.perspective_src_points[0][0])) + " " + str(int(self.perspective_src_points[0][1])) + " "\
+              + str(int(self.perspective_src_points[1][0])) + " " + str(int(self.perspective_src_points[1][1])) + " "\
+              + str(int(self.perspective_src_points[2][0])) + " " + str(int(self.perspective_src_points[2][1])) + " "\
+              + str(int(self.perspective_src_points[3][0])) + " " + str(int(self.perspective_src_points[3][1])) + " "
+        return string
+
+    def set_perspective_src_points_from_str(self, pts):
+        src_pts = np.float32([[float(pts[0]), float(pts[1])], [float(pts[2]), float(pts[3])],
+                             [float(pts[4]), float(pts[5])], [float(pts[6]), float(pts[7])]])
+        self.perspective_src_points = src_pts
+
+
 
 

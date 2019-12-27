@@ -1,51 +1,43 @@
 import threading
 from bluetooth import *
 import time
+import math
+import cv2
+
+from Camera import Camera
 
 from BluetoothServer import BluetoothServer
 
+capture_image = cv2.imread("snap2.png")
 
-class BluetoothSendThread(threading.Thread):
-
-    def __init__(self, socket):
-        threading.Thread.__init__(self)
-        # threading.Thread.setDaemon(self, True)
-        self.socket = socket
-
-    def run(self):
-        i = 1
-        while True:
-            self.socket.send(str(i))
-            i += 1
-            time.sleep(1)
+# with open("snap2_tiny.png", "rb") as image:
+#     f = image.read()
+#     b = bytearray(f)
+#
+# single_img_byte_packet_size = 400
 
 
-class BluetoothReceiveThread(threading.Thread):
-
-    def __init__(self, socket):
-        threading.Thread.__init__(self)
-        # threading.Thread.setDaemon(self, True)
-        self.socket = socket
-
-    def run(self):
-        try:
-            while True:
-                data = self.socket.recv(1024)
-                if len(data) == 0:
-                    break
-                print("received [%s]" % data)
-        except IOError:
-            pass
-
+cam = Camera()
 
 bt_server = BluetoothServer()
 bt_server.wait_for_client()
 
-receive_thread = BluetoothReceiveThread(bt_server.get_client_socket())
-send_thread = BluetoothSendThread(bt_server.get_client_socket())
+bt_server.set_camera(cam)
 
+bt_server.set_image(capture_image)
 
-receive_thread.start()
-send_thread.start()
+bt_server.initialize_communication_threads()
+bt_server.start_communication_threads()
+
+while True:
+    print("cam", cam.get_perspective_src_points_to_str())
+    time.sleep(6)
+
+# receive_thread = BluetoothReceiveThread(bt_server.get_client_socket())
+# send_thread = BluetoothSendThread(bt_server.get_client_socket())
+#
+#
+# receive_thread.start()
+# send_thread.start()
 
 
