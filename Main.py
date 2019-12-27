@@ -29,7 +29,7 @@ class CameraCaptureThread(threading.Thread):
         self.camera = PiCamera()
         self.camera.resolution = camera_resolution
         self.camera.framerate = 25
-        self.camera.rotation = 90
+        self.camera.rotation = 180
         self.raw_capture = PiRGBArray(self.camera, size=self.camera.resolution)
 
         time.sleep(1)
@@ -86,7 +86,10 @@ class OutputDisplayThread(threading.Thread):
             processed_event.clear()
             show_image = cv2.resize(output_image, screen_size)
             cv2.imshow("Output", show_image)
-            cv2.waitKey(1) & 0xFF
+            key = cv2.waitKey(1) & 0xFF
+
+            if key == ord("q"):
+                stop_event.set()
             # print("Showing")
 
 
@@ -100,7 +103,7 @@ output_display_thread.start()
 
 
 start_time = time.time()
-while 60 > time.time() - start_time:
+while 10 > time.time() - start_time:
     pass
 
 

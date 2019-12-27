@@ -68,9 +68,9 @@ class BluetoothServer:
 
 		self.image = None
 
-		with open("snap2.png", "rb") as image:
-			f = image.read()
-			self.byte_image = bytearray(f)
+		# with open("snap2.png", "rb") as image:
+		# 	f = image.read()
+		# 	self.byte_image = bytearray(f)
 
 
 	def wait_for_client(self):

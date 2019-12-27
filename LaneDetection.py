@@ -8,19 +8,22 @@ from Camera import Camera
 
 class LaneDetection:
 
-    thresh_rgb_r = (145, 255)
-    thresh_hls_l = (145, 255)
-    thresh_lab_l = (154, 255)
+    thresh_rgb_r = (125, 255)
+    thresh_hls_l = (125, 255)
+    thresh_lab_l = (135, 255)
 
     def __init__(self):
         self.camera = Camera()
 
     def process(self, image):
         undistorted_image = self.camera.undistort(image)
+
         transformed_image = self.camera.perspective_transform(undistorted_image)
         binary_image = self.get_lane_binary_image(transformed_image)
         left_fit_x, right_fit_x, fit_y = self.find_lanes_rect(binary_image)
         marked_lane_image = self.mark_lane(undistorted_image, left_fit_x, right_fit_x, fit_y)
+
+        # marked_lane_image = self.camera.mark_roi(undistorted_image)
         return marked_lane_image
 
     def find_lanes_rect(self, img_bin):

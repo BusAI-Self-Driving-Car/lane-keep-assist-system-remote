@@ -19,8 +19,8 @@ class Camera:
     # perspective_src_points = np.float32([[16, image_size[1]], [605, image_size[1]],
     #                             [384, image_size[1] * 0.55], [256, image_size[1] * 0.55]])
 
-    perspective_src_points = np.float32([[6, 338], [580, 338],
-                                [396, 201], [221, 201]])
+    perspective_src_points = np.float32([[0, 413], [640, 413],
+                                [380, 250], [262, 250]])
 
     perspective_dst_points = np.float32([[image_size[0] / 4, image_size[1]],
                                 [image_size[0] * 3 / 4, image_size[1]],
@@ -101,6 +101,13 @@ class Camera:
     def lane_binary(self):
         pass
 
+    def mark_roi(self, img):
+        out_img = img.copy()
+        for i in range(4):
+            out_img = cv2.line(out_img, tuple(self.perspective_src_points[i % 4]),
+                           tuple(self.perspective_src_points[(i + 1) % 4]), (0, 0, 255), 2)
+        return out_img
+
 
     def color_transforms(self, img):
         b, g, r = cv2.split(img)
@@ -136,5 +143,7 @@ class Camera:
         src_pts = np.float32([[float(pts[0]), float(pts[1])], [float(pts[2]), float(pts[3])],
                              [float(pts[4]), float(pts[5])], [float(pts[6]), float(pts[7])]])
         self.perspective_src_points = src_pts
+
+
 
 
