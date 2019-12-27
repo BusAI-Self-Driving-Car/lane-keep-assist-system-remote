@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from LaneDetection import LaneDetection
+from BluetoothServer import BluetoothServer
 import threading
 import time
 from picamera import PiCamera
@@ -91,6 +92,50 @@ class OutputDisplayThread(threading.Thread):
             if key == ord("q"):
                 stop_event.set()
             # print("Showing")
+
+class BluetoothConnectionThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        threading.Thread.setDaemon(self, True)
+        self.bluetooth_server = BluetoothServer()
+        self.client_socket = None
+
+    def run(self):
+        self.bluetooth_server.wait_for_client()
+        self.client_socket = self.bluetooth_server.get_client_socket()
+
+    class ReceiveThread(threading.Thread):
+        def __init__(self, socket):
+            threading.Thread.__init__(self)
+            # threading.Thread.setDaemon(self, True)
+            self.socket = socket
+
+        def run(self):
+            try:
+                while True:
+                    data = self.socket.recv(1024)
+                    if len(data) == 0:
+                        break
+                    print("received [%s]" % data)
+            except IOError:
+                pass
+
+    class SendThread(threading.Thread):
+        def __init__(self, socket):
+            threading.Thread.__init__(self)
+            # threading.Thread.setDaemon(self, True)
+            self.socket = socket
+
+        def run(self):
+            i = 1
+            while True:
+                self.socket.send(str(i))
+                i += 1
+                time.sleep(1)
+
+
+
+
 
 
 camera_capture_thread = CameraCaptureThread()

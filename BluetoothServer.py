@@ -78,6 +78,7 @@ class BluetoothServer:
 		print("Waiting for connection")
 		self.client_sock, self.client_info = self.server.accept()
 		print("Accepted connection from: ", self.client_info)
+		return True
 
 	def get_client_socket(self):
 		return self.client_sock
