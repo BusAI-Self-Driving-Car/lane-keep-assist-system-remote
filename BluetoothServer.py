@@ -137,6 +137,7 @@ class BluetoothServer:
 					print(vals)
 					if vals[0] == "save_settings":
 						self.bluetooth_server.camera.set_perspective_src_points_from_str(vals[1:])
+						self.bluetooth_server.camera.save_perspective_src_points()
 					elif vals[0] == "open_settings":
 						self.bluetooth_server.send(self.bluetooth_server.get_image_bytes(), BluetoothServer.STATE_IMAGE_SENDING)
 						self.bluetooth_server.send("settings " + self.bluetooth_server.camera.get_perspective_src_points_to_str(),

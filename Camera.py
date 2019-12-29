@@ -16,11 +16,7 @@ class Camera:
     chessboard_pattern = (7, 9)
     calibrate_imgs_path = glob.glob("./ccalib-test-images-5/*.jpg")
 
-    # perspective_src_points = np.float32([[16, image_size[1]], [605, image_size[1]],
-    #                             [384, image_size[1] * 0.55], [256, image_size[1] * 0.55]])
-
-    perspective_src_points = np.float32([[0, 413], [640, 413],
-                                [380, 250], [262, 250]])
+    perspective_src_points = []
 
     perspective_dst_points = np.float32([[image_size[0] / 4, image_size[1]],
                                 [image_size[0] * 3 / 4, image_size[1]],
@@ -75,6 +71,7 @@ class Camera:
         self.optimal_matrix = np.genfromtxt('cameraOptimalMatrix.csv')
         self.distortion_coeffs = np.genfromtxt('cameraDistortionCoeffs.csv')
         self.ROI = np.genfromtxt('cameraROI.csv')
+        self.perspective_src_points = np.genfromtxt('perspectiveSourcePoints.csv', dtype='float32')
 
     def undistort(self, img):
         img_undist = cv2.undistort(img, self.matrix, self.distortion_coeffs, None, self.optimal_matrix)
@@ -143,6 +140,9 @@ class Camera:
         src_pts = np.float32([[float(pts[0]), float(pts[1])], [float(pts[2]), float(pts[3])],
                              [float(pts[4]), float(pts[5])], [float(pts[6]), float(pts[7])]])
         self.perspective_src_points = src_pts
+
+    def save_perspective_src_points(self):
+        np.savetxt('perspectiveSourcePoints.csv', self.perspective_src_points)
 
 
 

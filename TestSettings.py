@@ -69,7 +69,7 @@ class ImageProcessingThread(threading.Thread):
         while not stop_event.is_set():
             captured_event.wait()
             captured_event.clear()
-            output_image = self.lane_detection.camera.mark_roi(capture_image)
+            output_image = self.lane_detection.camera.mark_roi(capture_image) # self.lane_detection.process(capture_image)
             processed_event.set()
 
 
