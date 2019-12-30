@@ -16,7 +16,11 @@ class LaneDetection:
     lane_width_real = 3.
     lane_length_real = 10.
 
-    max_m_offset_abs = 1.
+    max_m_offset_abs = 0.39
+
+    max_m_offset_error = 2.
+
+    tail_frame_correct_max = 7
 
     def __init__(self):
         self.load_color_thresholds()
@@ -25,22 +29,33 @@ class LaneDetection:
         self.x_m_per_px = self.lane_width_real\
                           / (self.camera.perspective_dst_points[1][0] - self.camera.perspective_dst_points[0][0])
 
-    def process(self, image):
-        undistorted_image = self.camera.undistort(image)
+        self.tail_frame_correct = 0
 
+        self.prev_left_fit_x = [0]
+        self.prev_right_fit_x = [0]
+        self.prev_fit_y = [0]
+        self.prev_offset = 0.
+
+    def process(self, image):
+        alert = False
+
+        undistorted_image = self.camera.undistort(image)
         transformed_image = self.camera.perspective_transform(undistorted_image)
-        binary_image = self.get_lane_binary_image(transformed_image)
-        ret, left_fit_x, right_fit_x, fit_y = self.find_lanes_rect(binary_image)
+        binary_image = self.get_lane_binary_image(transformed_image, undistorted_image)
+        ret, left_fit_x, right_fit_x, fit_y, offset = self.find_lanes_rect(binary_image)
 
         if ret:
             marked_lane_image = self.mark_lane(undistorted_image, left_fit_x, right_fit_x, fit_y)
             offset = self.get_offset(left_fit_x, right_fit_x, self.camera.get_image_size()[0] / 2)
             marked_lane_image = self.mark_offset(marked_lane_image, offset)
+
+            if abs(offset) > self.max_m_offset_abs:
+                alert = True
         else:
             marked_lane_image = self.mark_offset(undistorted_image, " - ")
 
         # marked_lane_image = self.camera.mark_roi(undistorted_image)
-        return marked_lane_image
+        return marked_lane_image, alert, offset
 
     def find_lanes_rect(self, img_bin):
         image_size = self.camera.get_image_size()
@@ -136,29 +151,62 @@ class LaneDetection:
             nominal_area = nominal_width * self.camera.get_image_size()[1]
 
             # filter outputs
-            if base_width < 0.7 * nominal_width or base_width > 1.3 * nominal_width:
+            if base_width < 0.7 * nominal_width or base_width > 1.4 * nominal_width:
                 print("Base err: {}".format(base_width))
+                self.tail_frame_correct += 1
                 ret = False
             elif self.curves_inter_area(left_fit_x, right_fit_x) > 1.5 * nominal_area or\
                 self.curves_inter_area(left_fit_x, right_fit_x) < 0.75 * nominal_area:
+                self.tail_frame_correct += 1
                 ret = False
                 print("Area err: {}".format(self.curves_inter_area(left_fit_x, right_fit_x)))
-            elif self.curves_difference(left_fit_x, right_fit_x) > 2000:
+            elif self.curves_difference(left_fit_x, right_fit_x) > 2500:
                 print("Diff err: {}".format(self.curves_difference(left_fit_x, right_fit_x)))
+                self.tail_frame_correct += 1
                 ret = False
 
+            offset = self.get_offset(left_fit_x, right_fit_x, self.camera.get_image_size()[0] / 2)
+
+            if offset > self.max_m_offset_error:
+                self.tail_frame_correct += 1
+                ret = False
+
+            if ret:
+                self.prev_left_fit_x = left_fit_x
+                self.prev_right_fit_x = right_fit_x
+                self.prev_fit_y = fit_y
+                self.prev_offset = offset
+                self.tail_frame_correct = 0
+
+            elif self.tail_frame_correct < self.tail_frame_correct_max:
+                left_fit_x = self.prev_left_fit_x
+                right_fit_x = self.prev_right_fit_x
+                fit_y = self.prev_fit_y
+                offset = self.prev_offset
+                ret = True
+
         else:
-            fit_y = None
-            left_fit_x = None
-            right_fit_x = None
+            if self.tail_frame_correct < self.tail_frame_correct_max:
+                left_fit_x = self.prev_left_fit_x
+                right_fit_x = self.prev_right_fit_x
+                fit_y = self.prev_fit_y
+                offset = self.prev_offset
+                ret = True
+            else:
+                fit_y = None
+                left_fit_x = None
+                right_fit_x = None
+                offset = 0.
 
-        return ret, left_fit_x, right_fit_x, fit_y
 
-    def get_lane_binary_image(self, trans_image):
+        return ret, left_fit_x, right_fit_x, fit_y, offset
+
+    def get_lane_binary_image(self, trans_image, udist_image):
         img_rgb_r = self.threshold_rgb_r(trans_image)
         img_hls_l = self.threshold_hls_l(trans_image)
         img_lab_l = self.threshold_lab_l(trans_image)
-        img_combined = self.combine_binary([img_rgb_r, img_hls_l, img_lab_l])
+        img_canny = self.camera.perspective_transform(self.canny_edge_detect(udist_image))
+        img_combined = self.combine_binary([img_rgb_r, img_hls_l, img_lab_l, img_canny])
         img_binary = cv2.GaussianBlur(img_combined, (5, 5), 0)
         img_binary.dtype = 'uint8'
         return img_binary
@@ -177,6 +225,13 @@ class LaneDetection:
         l, _, _ = cv2.split(img)
         _, img_thresh = cv2.threshold(l, self.thresh_lab_l[0], self.thresh_lab_l[1], cv2.THRESH_BINARY)
         return img_thresh
+
+    def canny_edge_detect(self, img):
+        img.dtype = 'uint8'
+        img_blur = cv2.GaussianBlur(img, (3, 3), 0)
+        img_gray = cv2.cvtColor(img_blur, cv2.COLOR_RGB2GRAY)
+        edges = cv2.Canny(img_gray, 50, 150, (3, 3))
+        return edges
 
     def combine_binary(self, imgs):
         if len(imgs) > 1:

@@ -9,6 +9,8 @@ from BluetoothServer import BluetoothServer
 camera_resolution = (640, 480)
 screen_size = (360, 240)
 
+alert_time_brake = 2 # seconds
+
 
 capture_image = np.zeros(camera_resolution + tuple([3]), np.uint8)
 output_image = capture_image
@@ -64,15 +66,32 @@ class ImageProcessingThread(threading.Thread):
 
         self.lane_detection = LaneDetection()
 
+        self.alert_time = time.time()
+        self.fps_time = time.time()
+
     def run(self):
         global output_image
         while not stop_event.is_set():
             captured_event.wait()
             captured_event.clear()
-            output_image = self.lane_detection.process(capture_image) # self.lane_detection.camera.mark_roi(capture_image) # self.lane_detection.process(capture_image)
+            output_image, alert, offset = self.lane_detection.process(capture_image) # self.lane_detection.camera.mark_roi(capture_image) # self.lane_detection.process(capture_image)
+            fps = round(1. / (time.time() - self.fps_time), 1)
+            output_image = self.mark_fps(output_image, fps)
+            self.fps_time = time.time()
+            if alert and time.time() - self.alert_time > alert_time_brake:
+                direction = "L " if offset > 0 else "R "
+                # bluetooth_server.send("alert " + direction + str(abs(offset)), BluetoothServer.STATE_CUSTOM_SENDING)
+                self.alert_time = time.time()
+
             output_image = self.lane_detection.camera.mark_roi(output_image)
             processed_event.set()
 
+    def mark_fps(self, img, fps):
+        out_img = img.copy()
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        text1 = str(fps) + " fps"
+        cv2.putText(out_img, text1, (500, 10), font, 0.75, (255, 0, 150), 2)
+        return out_img
 
 class OutputDisplayThread(threading.Thread):
     def __init__(self):

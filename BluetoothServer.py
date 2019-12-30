@@ -45,8 +45,11 @@ class BluetoothServer:
 
 	STATE_CUSTOM_SENDING = 0
 	STATE_IMAGE_SENDING = 1
+	STATE_SETTINGS_SENDING = 2
 
 	single_img_byte_packet_size = 400
+
+	is_settings_sending = False
 
 
 
@@ -69,10 +72,6 @@ class BluetoothServer:
 
 		self.image = None
 
-		# with open("snap2.png", "rb") as image:
-		# 	f = image.read()
-		# 	self.byte_image = bytearray(f)
-
 
 	def wait_for_client(self):
 		advertise_service(self.server, "RaspberryServer", service_id=self.uuid)
@@ -86,28 +85,30 @@ class BluetoothServer:
 
 	def initialize_communication_threads(self):
 		self.receive_thread = self.ReceiveThread(self)
-		# self.send_thread = self.SendThread(self)
 
 	def start_communication_threads(self):
 		self.receive_thread.start()
-		# self.send_thread.start()
 
 	def send(self, obj, state):
 		if state == self.STATE_CUSTOM_SENDING:
-			self.client_sock.send(obj)
+			if not self.is_settings_sending:
+				self.client_sock.send(obj)
 
 		elif state == self.STATE_IMAGE_SENDING:
 			print("sending length", str(len(obj)))
-			time.sleep(0.1)
+			time.sleep(0.05)
 			self.client_sock.send(" ")
 			self.client_sock.send(str(len(obj)))
-			time.sleep(0.1)
+			time.sleep(0.05)
 			print("sent")
 			print("range", math.ceil(len(obj) / self.single_img_byte_packet_size))
 			for i in range(math.ceil(len(obj) / self.single_img_byte_packet_size)):
 				print("sending part", i)
 				self.client_sock.send(bytes(obj[i * self.single_img_byte_packet_size : (i+1) * self.single_img_byte_packet_size]))
-			time.sleep(0.1)
+			time.sleep(0.05)
+
+		elif state == self.STATE_SETTINGS_SENDING:
+			self.client_sock.send(obj)
 
 	def set_camera(self, camera):
 		self.camera = camera
@@ -145,31 +146,14 @@ class BluetoothServer:
 						self.bluetooth_server.lane_detection.set_color_thresholds_from_str(vals[9:12])
 						self.bluetooth_server.lane_detection.save_color_thresholds()
 					elif vals[0] == "open_settings":
+						self.bluetooth_server.is_settings_sending = True
 						self.bluetooth_server.send(self.bluetooth_server.get_image_bytes(), BluetoothServer.STATE_IMAGE_SENDING)
 						print("settings " + self.bluetooth_server.lane_detection.camera.get_perspective_src_points_to_str()
 												   + " " + self.bluetooth_server.lane_detection.get_color_thresholds_to_str())
 						self.bluetooth_server.send("settings " + self.bluetooth_server.lane_detection.camera.get_perspective_src_points_to_str()
 												   + " " + self.bluetooth_server.lane_detection.get_color_thresholds_to_str(),
-												   BluetoothServer.STATE_CUSTOM_SENDING)
+												   BluetoothServer.STATE_SETTINGS_SENDING)
+						self.bluetooth_server.is_settings_sending = False
 
 			except IOError:
 				pass
-
-	class SendThread(threading.Thread):
-		def __init__(self, bluetooth_server):
-			threading.Thread.__init__(self)
-			# threading.Thread.setDaemon(self, True)
-			self.socket = bluetooth_server.client_sock
-
-		def run(self):
-			i = 1
-			while True:
-				# time.sleep(5)
-				# self.socket.send(str(len(b)))
-				# for i in range(math.ceil(len(b) / single_img_byte_packet_size)):
-				#     self.socket.send(bytes(b[i * single_img_byte_packet_size : (i+1) * single_img_byte_packet_size]))
-				#     print("Sending ", i)
-
-				self.socket.send(str(i))
-				i += 1
-				time.sleep(5)
