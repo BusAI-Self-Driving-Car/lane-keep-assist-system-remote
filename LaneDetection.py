@@ -16,9 +16,14 @@ class LaneDetection:
     lane_width_real = 3.
     lane_length_real = 10.
 
+    max_m_offset_abs = 1.
+
     def __init__(self):
         self.load_color_thresholds()
         self.camera = Camera()
+
+        self.x_m_per_px = self.lane_width_real\
+                          / (self.camera.perspective_dst_points[1][0] - self.camera.perspective_dst_points[0][0])
 
     def process(self, image):
         undistorted_image = self.camera.undistort(image)
@@ -26,10 +31,13 @@ class LaneDetection:
         transformed_image = self.camera.perspective_transform(undistorted_image)
         binary_image = self.get_lane_binary_image(transformed_image)
         ret, left_fit_x, right_fit_x, fit_y = self.find_lanes_rect(binary_image)
+
         if ret:
             marked_lane_image = self.mark_lane(undistorted_image, left_fit_x, right_fit_x, fit_y)
+            offset = self.get_offset(left_fit_x, right_fit_x, self.camera.get_image_size()[0] / 2)
+            marked_lane_image = self.mark_offset(marked_lane_image, offset)
         else:
-            marked_lane_image = undistorted_image
+            marked_lane_image = self.mark_offset(undistorted_image, " - ")
 
         # marked_lane_image = self.camera.mark_roi(undistorted_image)
         return marked_lane_image
@@ -125,11 +133,19 @@ class LaneDetection:
             base_width = right_fit_x[-1] - left_fit_x[-1]
             nominal_width = self.camera.perspective_dst_points[1][0] - self.camera.perspective_dst_points[0][0]
 
+            nominal_area = nominal_width * self.camera.get_image_size()[1]
+
+            # filter outputs
             if base_width < 0.7 * nominal_width or base_width > 1.3 * nominal_width:
                 print("Base err: {}".format(base_width))
                 ret = False
+            elif self.curves_inter_area(left_fit_x, right_fit_x) > 1.5 * nominal_area or\
+                self.curves_inter_area(left_fit_x, right_fit_x) < 0.75 * nominal_area:
+                ret = False
+                print("Area err: {}".format(self.curves_inter_area(left_fit_x, right_fit_x)))
             elif self.curves_difference(left_fit_x, right_fit_x) > 2000:
                 print("Diff err: {}".format(self.curves_difference(left_fit_x, right_fit_x)))
+                ret = False
 
         else:
             fit_y = None
@@ -187,6 +203,13 @@ class LaneDetection:
         marked_lane_image = cv2.addWeighted(undistorted_image, 1, color_mark, 0.3, 0)
         return marked_lane_image
 
+    def mark_offset(self, img, offset):
+        out_img = img.copy()
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        text1 = "Offset = " + str(offset) + "m"
+        cv2.putText(out_img, text1, (200, 100), font, 1, (255, 0, 0), 2)
+        return out_img
+
     def get_color_thresholds_to_str(self):
         thresholds = str(self.thresh_rgb_r[0]) + " " + str(self.thresh_hls_l[0]) + " " + str(self.thresh_lab_l[0])
         return thresholds
@@ -213,3 +236,12 @@ class LaneDetection:
             sum += (right_fit[i] - base_width - left_fit[i])**2
         return sum**0.5
 
+    def curves_inter_area(self, left_fit, right_fit):
+        area = 0
+        for i in range(len(left_fit)):
+            area += (right_fit[i] - left_fit[i])
+        return area
+
+    def get_offset(self, left_fit, right_fit, midpoint):
+        offset = round(((left_fit[-1] + right_fit[-1]) / 2 - midpoint) * self.x_m_per_px, 2)
+        return offset
