@@ -8,11 +8,16 @@ from Camera import Camera
 
 class LaneDetection:
 
-    thresh_rgb_r = (125, 255)
-    thresh_hls_l = (125, 255)
-    thresh_lab_l = (135, 255)
+    thresh_rgb_r = []
+    thresh_hls_l = []
+    thresh_lab_l = []
+
+    # real lane dimensions
+    lane_width_real = 3.
+    lane_length_real = 10.
 
     def __init__(self):
+        self.load_color_thresholds()
         self.camera = Camera()
 
     def process(self, image):
@@ -20,8 +25,11 @@ class LaneDetection:
 
         transformed_image = self.camera.perspective_transform(undistorted_image)
         binary_image = self.get_lane_binary_image(transformed_image)
-        left_fit_x, right_fit_x, fit_y = self.find_lanes_rect(binary_image)
-        marked_lane_image = self.mark_lane(undistorted_image, left_fit_x, right_fit_x, fit_y)
+        ret, left_fit_x, right_fit_x, fit_y = self.find_lanes_rect(binary_image)
+        if ret:
+            marked_lane_image = self.mark_lane(undistorted_image, left_fit_x, right_fit_x, fit_y)
+        else:
+            marked_lane_image = undistorted_image
 
         # marked_lane_image = self.camera.mark_roi(undistorted_image)
         return marked_lane_image
@@ -91,23 +99,44 @@ class LaneDetection:
         right_x = nonzero_x[right_lane_pix]
         right_y = nonzero_y[right_lane_pix]
 
+        left_fit_coeffs = np.array([0, 0, 0])
+        right_fit_coeffs = np.array([0, 0, 0])
+
         # Fit a second order polynomial to each
         if left_x.size == 0 or left_y.size == 0 or right_x.size == 0 or right_y.size == 0:
-            left_fit_coeffs = np.array([0, 0, 0])
-            right_fit_coeffs = np.array([0, 0, 0])
+            ret = False
 
         else:
             left_fit_coeffs = np.polyfit(left_y, left_x, 2)
             right_fit_coeffs = np.polyfit(right_y, right_x, 2)
+            ret = True
 
-        # print(left_fit_coeffs)
+            # if right_fit_coeffs[2] - left_fit_coeffs[2] < 0.9 * (self.camera.perspective_dst_points[1][0] - self.camera.perspective_dst_points[0][0]):
+            #     ret = False
+
+        # print(left_fit_coeffs, right_fit_coeffs)
 
         # Generate x and y values for plotting
-        fit_y = np.linspace(0, image_size[0] - 1, image_size[0])
-        left_fit_x = left_fit_coeffs[0] * fit_y ** 2 + left_fit_coeffs[1] * fit_y + left_fit_coeffs[2]
-        right_fit_x = right_fit_coeffs[0] * fit_y ** 2 + right_fit_coeffs[1] * fit_y + right_fit_coeffs[2]
+        if ret:
+            fit_y = np.linspace(0, image_size[0] - 1, image_size[0])
+            left_fit_x = left_fit_coeffs[0] * fit_y ** 2 + left_fit_coeffs[1] * fit_y + left_fit_coeffs[2]
+            right_fit_x = right_fit_coeffs[0] * fit_y ** 2 + right_fit_coeffs[1] * fit_y + right_fit_coeffs[2]
 
-        return left_fit_x, right_fit_x, fit_y
+            base_width = right_fit_x[-1] - left_fit_x[-1]
+            nominal_width = self.camera.perspective_dst_points[1][0] - self.camera.perspective_dst_points[0][0]
+
+            if base_width < 0.7 * nominal_width or base_width > 1.3 * nominal_width:
+                print("Base err: {}".format(base_width))
+                ret = False
+            elif self.curves_difference(left_fit_x, right_fit_x) > 2000:
+                print("Diff err: {}".format(self.curves_difference(left_fit_x, right_fit_x)))
+
+        else:
+            fit_y = None
+            left_fit_x = None
+            right_fit_x = None
+
+        return ret, left_fit_x, right_fit_x, fit_y
 
     def get_lane_binary_image(self, trans_image):
         img_rgb_r = self.threshold_rgb_r(trans_image)
@@ -157,3 +186,30 @@ class LaneDetection:
 
         marked_lane_image = cv2.addWeighted(undistorted_image, 1, color_mark, 0.3, 0)
         return marked_lane_image
+
+    def get_color_thresholds_to_str(self):
+        thresholds = str(self.thresh_rgb_r[0]) + " " + str(self.thresh_hls_l[0]) + " " + str(self.thresh_lab_l[0])
+        return thresholds
+
+    def set_color_thresholds_from_str(self, thresh):
+        self.thresh_rgb_r[0] = int(thresh[0])
+        self.thresh_hls_l[0] = int(thresh[1])
+        self.thresh_lab_l[0] = int(thresh[2])
+
+    def save_color_thresholds(self):
+        thresh = np.int32([self.thresh_rgb_r, self.thresh_hls_l, self.thresh_lab_l])
+        np.savetxt('colorThresholds.csv', thresh)
+
+    def load_color_thresholds(self):
+        thresh = np.genfromtxt('colorThresholds.csv', dtype='int32')
+        self.thresh_rgb_r = list(thresh[0])
+        self.thresh_hls_l = list(thresh[1])
+        self.thresh_lab_l = list(thresh[2])
+
+    def curves_difference(self, left_fit, right_fit):
+        sum = 0
+        base_width = right_fit[-1] - left_fit[-1]
+        for i in range(len(left_fit)):
+            sum += (right_fit[i] - base_width - left_fit[i])**2
+        return sum**0.5
+

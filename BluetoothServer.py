@@ -65,6 +65,7 @@ class BluetoothServer:
 		self.receive_thread = None
 		self.send_thread = None
 		self.camera = None
+		self.lane_detection = None
 
 		self.image = None
 
@@ -111,6 +112,9 @@ class BluetoothServer:
 	def set_camera(self, camera):
 		self.camera = camera
 
+	def set_lane_detection(self, lane_detection):
+		self.lane_detection = lane_detection
+
 	def set_image(self, image):
 		self.image = image
 
@@ -136,12 +140,17 @@ class BluetoothServer:
 					vals = data.split(" ")
 					print(vals)
 					if vals[0] == "save_settings":
-						self.bluetooth_server.camera.set_perspective_src_points_from_str(vals[1:])
-						self.bluetooth_server.camera.save_perspective_src_points()
+						self.bluetooth_server.lane_detection.camera.set_perspective_src_points_from_str(vals[1:9])
+						self.bluetooth_server.lane_detection.camera.save_perspective_src_points()
+						self.bluetooth_server.lane_detection.set_color_thresholds_from_str(vals[9:12])
+						self.bluetooth_server.lane_detection.save_color_thresholds()
 					elif vals[0] == "open_settings":
 						self.bluetooth_server.send(self.bluetooth_server.get_image_bytes(), BluetoothServer.STATE_IMAGE_SENDING)
-						self.bluetooth_server.send("settings " + self.bluetooth_server.camera.get_perspective_src_points_to_str(),
-											   		BluetoothServer.STATE_CUSTOM_SENDING)
+						print("settings " + self.bluetooth_server.lane_detection.camera.get_perspective_src_points_to_str()
+												   + " " + self.bluetooth_server.lane_detection.get_color_thresholds_to_str())
+						self.bluetooth_server.send("settings " + self.bluetooth_server.lane_detection.camera.get_perspective_src_points_to_str()
+												   + " " + self.bluetooth_server.lane_detection.get_color_thresholds_to_str(),
+												   BluetoothServer.STATE_CUSTOM_SENDING)
 
 			except IOError:
 				pass

@@ -133,7 +133,7 @@ class Camera:
         string = str(int(self.perspective_src_points[0][0])) + " " + str(int(self.perspective_src_points[0][1])) + " "\
               + str(int(self.perspective_src_points[1][0])) + " " + str(int(self.perspective_src_points[1][1])) + " "\
               + str(int(self.perspective_src_points[2][0])) + " " + str(int(self.perspective_src_points[2][1])) + " "\
-              + str(int(self.perspective_src_points[3][0])) + " " + str(int(self.perspective_src_points[3][1])) + " "
+              + str(int(self.perspective_src_points[3][0])) + " " + str(int(self.perspective_src_points[3][1]))
         return string
 
     def set_perspective_src_points_from_str(self, pts):

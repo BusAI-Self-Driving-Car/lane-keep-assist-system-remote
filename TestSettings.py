@@ -69,7 +69,7 @@ class ImageProcessingThread(threading.Thread):
         while not stop_event.is_set():
             captured_event.wait()
             captured_event.clear()
-            output_image = self.lane_detection.camera.mark_roi(capture_image) # self.lane_detection.process(capture_image)
+            output_image = self.lane_detection.process(capture_image) # self.lane_detection.camera.mark_roi(capture_image) # self.lane_detection.process(capture_image)
             processed_event.set()
 
 
@@ -98,10 +98,11 @@ camera_capture_thread = CameraCaptureThread()
 image_processing_thread = ImageProcessingThread()
 output_display_thread = OutputDisplayThread()
 
-bluetooth_server.wait_for_client()
-bluetooth_server.set_camera(image_processing_thread.lane_detection.camera)
-bluetooth_server.initialize_communication_threads()
-bluetooth_server.start_communication_threads()
+# bluetooth_server.wait_for_client()
+# # bluetooth_server.set_camera(image_processing_thread.lane_detection.camera)
+# bluetooth_server.set_lane_detection(image_processing_thread.lane_detection)
+# bluetooth_server.initialize_communication_threads()
+# bluetooth_server.start_communication_threads()
 
 camera_capture_thread.start()
 image_processing_thread.start()
