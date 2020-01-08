@@ -1,0 +1,5 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Terminal autostart
+Comment=Start a terminal and list directory
+Exec=/usr/bin/lxterminal -e 'cd LKA/lane-keep-assist-system-remote && python3 TestSettings.py'

@@ -65,6 +65,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     image_show = cv2.resize(image, (360, 240))
 
     # show the frame
+    cv2.line(image_show, (180, 0), (180, 239), (0, 0, 255), 2)
     cv2.imshow("Frame", image_show)
     key = cv2.waitKey(1) & 0xFF
 

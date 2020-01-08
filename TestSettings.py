@@ -9,7 +9,10 @@ from BluetoothServer import BluetoothServer
 camera_resolution = (640, 480)
 screen_size = (360, 240)
 
+assistant_time_brake = 1 # seconds
+
 alert_time_brake = 2 # seconds
+
 
 
 capture_image = np.zeros(camera_resolution + tuple([3]), np.uint8)
@@ -67,6 +70,7 @@ class ImageProcessingThread(threading.Thread):
         self.lane_detection = LaneDetection()
 
         self.alert_time = time.time()
+        self.assistant_time = time.time()
         self.fps_time = time.time()
 
     def run(self):
@@ -78,10 +82,17 @@ class ImageProcessingThread(threading.Thread):
             fps = round(1. / (time.time() - self.fps_time), 1)
             output_image = self.mark_fps(output_image, fps)
             self.fps_time = time.time()
-            if alert and time.time() - self.alert_time > alert_time_brake:
+            if time.time() - self.assistant_time > assistant_time_brake:
                 direction = "L " if offset > 0 else "R "
-                # bluetooth_server.send("alert " + direction + str(abs(offset)), BluetoothServer.STATE_CUSTOM_SENDING)
-                self.alert_time = time.time()
+                if abs(offset) < 0.1:
+                    priority = 0
+                elif abs(offset) < 0.39:
+                    priority = 1
+                else:
+                    priority = 2
+                bluetooth_server.send("alert " + str(priority) + " " + direction + str(abs(offset)), BluetoothServer.STATE_CUSTOM_SENDING)
+
+                self.assistant_time = time.time()
 
             output_image = self.lane_detection.camera.mark_roi(output_image)
             processed_event.set()
@@ -118,11 +129,11 @@ camera_capture_thread = CameraCaptureThread()
 image_processing_thread = ImageProcessingThread()
 output_display_thread = OutputDisplayThread()
 
-# bluetooth_server.wait_for_client()
-# # bluetooth_server.set_camera(image_processing_thread.lane_detection.camera)
-# bluetooth_server.set_lane_detection(image_processing_thread.lane_detection)
-# bluetooth_server.initialize_communication_threads()
-# bluetooth_server.start_communication_threads()
+bluetooth_server.wait_for_client()
+# bluetooth_server.set_camera(image_processing_thread.lane_detection.camera)
+bluetooth_server.set_lane_detection(image_processing_thread.lane_detection)
+bluetooth_server.initialize_communication_threads()
+bluetooth_server.start_communication_threads()
 
 camera_capture_thread.start()
 image_processing_thread.start()

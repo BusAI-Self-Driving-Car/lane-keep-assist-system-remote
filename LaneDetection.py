@@ -13,7 +13,7 @@ class LaneDetection:
     thresh_lab_l = []
 
     # real lane dimensions
-    lane_width_real = 3.
+    lane_width_real = 3.75
     lane_length_real = 10.
 
     max_m_offset_abs = 0.39
@@ -151,17 +151,17 @@ class LaneDetection:
             nominal_area = nominal_width * self.camera.get_image_size()[1]
 
             # filter outputs
-            if base_width < 0.7 * nominal_width or base_width > 1.4 * nominal_width:
-                print("Base err: {}".format(base_width))
+            if base_width < 0.7 * nominal_width or base_width > 1.5 * nominal_width:
+                # print("Base err: {}".format(base_width))
                 self.tail_frame_correct += 1
                 ret = False
             elif self.curves_inter_area(left_fit_x, right_fit_x) > 1.5 * nominal_area or\
                 self.curves_inter_area(left_fit_x, right_fit_x) < 0.75 * nominal_area:
                 self.tail_frame_correct += 1
                 ret = False
-                print("Area err: {}".format(self.curves_inter_area(left_fit_x, right_fit_x)))
+                # print("Area err: {}".format(self.curves_inter_area(left_fit_x, right_fit_x)))
             elif self.curves_difference(left_fit_x, right_fit_x) > 2500:
-                print("Diff err: {}".format(self.curves_difference(left_fit_x, right_fit_x)))
+                # print("Diff err: {}".format(self.curves_difference(left_fit_x, right_fit_x)))
                 self.tail_frame_correct += 1
                 ret = False
 
