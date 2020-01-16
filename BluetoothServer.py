@@ -96,17 +96,17 @@ class BluetoothServer:
 
         elif state == self.STATE_IMAGE_SENDING:
             print("sending length", str(len(obj)))
-            time.sleep(0.05)
+            time.sleep(0.1)
             self.client_sock.send(" ")
             self.client_sock.send(str(len(obj)))
-            time.sleep(0.05)
+            time.sleep(0.1)
             print("sent")
             print("range", math.ceil(len(obj) / self.single_img_byte_packet_size))
             self.client_sock.send(bytes(obj))
             # for i in range(math.ceil(len(obj) / self.single_img_byte_packet_size)):
             #     print("sending part", i)
             #     self.client_sock.send(bytes(obj[i * self.single_img_byte_packet_size : (i+1) * self.single_img_byte_packet_size]))
-            time.sleep(0.05)
+            time.sleep(0.1)
 
         elif state == self.STATE_SETTINGS_SENDING:
             self.client_sock.send(obj)
@@ -144,15 +144,15 @@ class BluetoothServer:
                     if vals[0] == "save_settings":
                         self.bluetooth_server.lane_detection.camera.set_perspective_src_points_from_str(vals[1:9])
                         self.bluetooth_server.lane_detection.camera.save_perspective_src_points()
-                        self.bluetooth_server.lane_detection.set_color_thresholds_from_str(vals[9:12])
+                        self.bluetooth_server.lane_detection.set_color_thresholds_from_seeknum(int(vals[9]))
                         self.bluetooth_server.lane_detection.save_color_thresholds()
                     elif vals[0] == "open_settings":
                         self.bluetooth_server.is_settings_sending = True
                         self.bluetooth_server.send(self.bluetooth_server.get_image_bytes(), BluetoothServer.STATE_IMAGE_SENDING)
                         print("settings " + self.bluetooth_server.lane_detection.camera.get_perspective_src_points_to_str()
-                              + " " + self.bluetooth_server.lane_detection.get_color_thresholds_to_str())
+                              + " " + str(self.bluetooth_server.lane_detection.get_color_thresholds_to_seeknum()))
                         self.bluetooth_server.send("settings " + self.bluetooth_server.lane_detection.camera.get_perspective_src_points_to_str()
-                                                   + " " + self.bluetooth_server.lane_detection.get_color_thresholds_to_str(),
+                                                   + " " + str(self.bluetooth_server.lane_detection.get_color_thresholds_to_seeknum()),
                                                    BluetoothServer.STATE_SETTINGS_SENDING)
                         self.bluetooth_server.is_settings_sending = False
 

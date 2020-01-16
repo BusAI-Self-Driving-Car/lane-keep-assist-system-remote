@@ -28,6 +28,8 @@ showed_event.set()
 
 bluetooth_server = BluetoothServer()
 
+lane_detection = LaneDetection()
+
 
 class CameraCaptureThread(threading.Thread):
     def __init__(self):
@@ -40,7 +42,7 @@ class CameraCaptureThread(threading.Thread):
         # self.camera.rotation = 180
         # self.raw_capture = PiRGBArray(self.camera, size=self.camera.resolution)
 
-        self.cap = cv2.VideoCapture('long_vid.mp4')
+        self.cap = cv2.VideoCapture('video_4.mp4')
         if not self.cap.isOpened():
             print("Error opening file")
         time.sleep(1)
@@ -52,6 +54,7 @@ class CameraCaptureThread(threading.Thread):
             showed_event.clear()
             ret, frame = self.cap.read()
             if ret:
+                frame = lane_detection.camera.undistort(frame)
                 capture_image = frame
                 bluetooth_server.set_image(frame)
                 captured_event.set()
@@ -67,7 +70,7 @@ class ImageProcessingThread(threading.Thread):
         threading.Thread.__init__(self)
         # threading.Thread.setDaemon(self, True)
 
-        self.lane_detection = LaneDetection()
+        # self.lane_detection = LaneDetection()
 
         self.alert_time = time.time()
         self.assistant_time = time.time()
@@ -78,23 +81,23 @@ class ImageProcessingThread(threading.Thread):
         while not stop_event.is_set():
             captured_event.wait()
             captured_event.clear()
-            output_image, alert, offset = self.lane_detection.process(capture_image) # self.lane_detection.camera.mark_roi(capture_image) # self.lane_detection.process(capture_image)
+            output_image, alert, offset, priority = lane_detection.process(capture_image) # self.lane_detection.camera.mark_roi(capture_image) # self.lane_detection.process(capture_image)
             fps = round(1. / (time.time() - self.fps_time), 1)
             output_image = self.mark_fps(output_image, fps)
             self.fps_time = time.time()
             if time.time() - self.assistant_time > assistant_time_brake:
                 direction = "L " if offset > 0 else "R "
-                if abs(offset) < 0.1:
-                    priority = 0
-                elif abs(offset) < 0.39:
-                    priority = 1
-                else:
-                    priority = 2
+                # if abs(offset) < 0.2:
+                #     priority = 0
+                # elif abs(offset) < 0.39:
+                #     priority = 1
+                # else:
+                #     priority = 2
                 bluetooth_server.send("alert " + str(priority) + " " + direction + str(abs(offset)), BluetoothServer.STATE_CUSTOM_SENDING)
 
                 self.assistant_time = time.time()
 
-            output_image = self.lane_detection.camera.mark_roi(output_image)
+            # output_image = lane_detection.camera.mark_roi(output_image)
             processed_event.set()
 
     def mark_fps(self, img, fps):
@@ -103,6 +106,7 @@ class ImageProcessingThread(threading.Thread):
         text1 = str(fps) + " fps"
         cv2.putText(out_img, text1, (500, 10), font, 0.75, (255, 0, 150), 2)
         return out_img
+
 
 class OutputDisplayThread(threading.Thread):
     def __init__(self):
@@ -131,7 +135,7 @@ output_display_thread = OutputDisplayThread()
 
 bluetooth_server.wait_for_client()
 # bluetooth_server.set_camera(image_processing_thread.lane_detection.camera)
-bluetooth_server.set_lane_detection(image_processing_thread.lane_detection)
+bluetooth_server.set_lane_detection(lane_detection)
 bluetooth_server.initialize_communication_threads()
 bluetooth_server.start_communication_threads()
 

@@ -8,15 +8,26 @@ from Camera import Camera
 
 class LaneDetection:
 
+
+    thresh_gray = []
     thresh_rgb_r = []
     thresh_hls_l = []
     thresh_lab_l = []
 
+
+    thresh_gray_vals = [g for g in range(105, 170, 5)]
+    thresh_rgb_r_vals = [r for r in range(105, 170, 5)]
+    thresh_hls_l_vals = [l for l in range(105, 170, 5)]
+    thresh_lab_l_vals = [l for l in range(105, 155, 2)]
+
     # real lane dimensions
     lane_width_real = 3.75
-    lane_length_real = 10.
 
-    max_m_offset_abs = 0.39
+    # max_m_offset_abs = 0.39
+
+    min_m_offset_warn = 0.2
+
+    min_m_offset_alert = 0.4
 
     max_m_offset_error = 2.
 
@@ -39,23 +50,31 @@ class LaneDetection:
     def process(self, image):
         alert = False
 
-        undistorted_image = self.camera.undistort(image)
-        transformed_image = self.camera.perspective_transform(undistorted_image)
-        binary_image = self.get_lane_binary_image(transformed_image, undistorted_image)
+        # undistorted_image = self.camera.undistort(image)
+        # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        transformed_image = self.camera.perspective_transform(image)
+        binary_image = self.get_lane_binary_image(transformed_image, image)
         ret, left_fit_x, right_fit_x, fit_y, offset = self.find_lanes_rect(binary_image)
 
         if ret:
-            marked_lane_image = self.mark_lane(undistorted_image, left_fit_x, right_fit_x, fit_y)
+            marked_lane_image = self.mark_lane(image, left_fit_x, right_fit_x, fit_y)
             offset = self.get_offset(left_fit_x, right_fit_x, self.camera.get_image_size()[0] / 2)
             marked_lane_image = self.mark_offset(marked_lane_image, offset)
 
-            if abs(offset) > self.max_m_offset_abs:
+            if abs(offset) < self.min_m_offset_warn:
+                priority = 0
+            elif abs(offset) < self.min_m_offset_alert:
+                priority = 1
+            else:
+                priority = 2
                 alert = True
         else:
-            marked_lane_image = self.mark_offset(undistorted_image, " - ")
+            marked_lane_image = self.mark_offset(image, " - ")
+            priority = 0
+            offset = 0
 
         # marked_lane_image = self.camera.mark_roi(undistorted_image)
-        return marked_lane_image, alert, offset
+        return marked_lane_image, alert, offset, priority
 
     def find_lanes_rect(self, img_bin):
         image_size = self.camera.get_image_size()
@@ -67,7 +86,7 @@ class LaneDetection:
         left_x_base = np.int(np.argmax(histogram[:mid_x]))
         right_x_base = np.int(np.argmax(histogram[mid_x:]) + mid_x)
 
-        margin = 80
+        margin = 50
         windows_num = 8
 
         window_height = np.int(image_size[1] / windows_num)
@@ -160,10 +179,10 @@ class LaneDetection:
                 self.tail_frame_correct += 1
                 ret = False
                 # print("Area err: {}".format(self.curves_inter_area(left_fit_x, right_fit_x)))
-            elif self.curves_difference(left_fit_x, right_fit_x) > 2500:
-                # print("Diff err: {}".format(self.curves_difference(left_fit_x, right_fit_x)))
-                self.tail_frame_correct += 1
-                ret = False
+            # elif self.curves_difference(left_fit_x, right_fit_x) > 2500:
+            #     # print("Diff err: {}".format(self.curves_difference(left_fit_x, right_fit_x)))
+            #     self.tail_frame_correct += 1
+            #     ret = False
 
             offset = self.get_offset(left_fit_x, right_fit_x, self.camera.get_image_size()[0] / 2)
 
@@ -201,15 +220,21 @@ class LaneDetection:
 
         return ret, left_fit_x, right_fit_x, fit_y, offset
 
-    def get_lane_binary_image(self, trans_image, udist_image):
-        img_rgb_r = self.threshold_rgb_r(trans_image)
+    def get_lane_binary_image(self, trans_image, image):
+        img_gray = self.threshold_gray(trans_image)
+        # img_rgb_r = self.threshold_rgb_r(trans_image)
         img_hls_l = self.threshold_hls_l(trans_image)
-        img_lab_l = self.threshold_lab_l(trans_image)
-        img_canny = self.camera.perspective_transform(self.canny_edge_detect(udist_image))
-        img_combined = self.combine_binary([img_rgb_r, img_hls_l, img_lab_l, img_canny])
-        img_binary = cv2.GaussianBlur(img_combined, (5, 5), 0)
+        # img_lab_l = self.threshold_lab_l(trans_image)
+        img_canny = self.camera.perspective_transform(self.canny_edge_detect(image))
+        img_binary = self.combine_binary([img_gray, img_hls_l, img_canny])
+        # img_binary = cv2.GaussianBlur(img_combined, (5, 5), 0)
         img_binary.dtype = 'uint8'
         return img_binary
+
+    def threshold_gray(self, img):
+        img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        _, img_thresh = cv2.threshold(img_gray, self.thresh_gray[0], self.thresh_gray[1], cv2.THRESH_BINARY)
+        return img_thresh
 
     def threshold_rgb_r(self, img):
         r, _, _ = cv2.split(img)
@@ -226,11 +251,11 @@ class LaneDetection:
         _, img_thresh = cv2.threshold(l, self.thresh_lab_l[0], self.thresh_lab_l[1], cv2.THRESH_BINARY)
         return img_thresh
 
-    def canny_edge_detect(self, img):
-        img.dtype = 'uint8'
-        img_blur = cv2.GaussianBlur(img, (3, 3), 0)
+    def canny_edge_detect(self, gray_img):
+        gray_img.dtype = 'uint8'
+        img_blur = cv2.GaussianBlur(gray_img, (3, 3), 0)
         img_gray = cv2.cvtColor(img_blur, cv2.COLOR_RGB2GRAY)
-        edges = cv2.Canny(img_gray, 50, 150, (3, 3))
+        edges = cv2.Canny(img_blur, 60, 150, (3, 3))
         return edges
 
     def combine_binary(self, imgs):
@@ -261,8 +286,8 @@ class LaneDetection:
     def mark_offset(self, img, offset):
         out_img = img.copy()
         font = cv2.FONT_HERSHEY_SIMPLEX
-        text1 = "Offset = " + str(offset) + "m"
-        cv2.putText(out_img, text1, (200, 100), font, 1, (255, 0, 0), 2)
+        text1 = str(offset) + "m"
+        cv2.putText(out_img, text1, (250, 100), font, 1, (255, 0, 0), 2)
         return out_img
 
     def get_color_thresholds_to_str(self):
@@ -274,15 +299,24 @@ class LaneDetection:
         self.thresh_hls_l[0] = int(thresh[1])
         self.thresh_lab_l[0] = int(thresh[2])
 
+    def get_color_thresholds_to_seeknum(self):
+        return self.thresh_gray_vals.index(self.thresh_gray[0])
+
+    def set_color_thresholds_from_seeknum(self, seeknum):
+        self.thresh_gray[0] = self.thresh_gray_vals[seeknum]
+        # self.thresh_rgb_r[0] = self.thresh_rgb_r_vals[seeknum]
+        self.thresh_hls_l[0] = self.thresh_hls_l_vals[seeknum]
+        # self.thresh_lab_l[0] = self.thresh_lab_l_vals[seeknum]
+
     def save_color_thresholds(self):
-        thresh = np.int32([self.thresh_rgb_r, self.thresh_hls_l, self.thresh_lab_l])
+        thresh = np.int32([self.thresh_gray, self.thresh_hls_l])
         np.savetxt('colorThresholds.csv', thresh)
 
     def load_color_thresholds(self):
         thresh = np.genfromtxt('colorThresholds.csv', dtype='int32')
-        self.thresh_rgb_r = list(thresh[0])
+        self.thresh_gray = list(thresh[0])
         self.thresh_hls_l = list(thresh[1])
-        self.thresh_lab_l = list(thresh[2])
+        # self.thresh_lab_l = list(thresh[2])
 
     def curves_difference(self, left_fit, right_fit):
         sum = 0

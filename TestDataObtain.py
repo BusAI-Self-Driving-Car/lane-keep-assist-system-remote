@@ -62,10 +62,16 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
             if_closed_done = True
             if_opened_done = False
 
-    image_show = cv2.resize(image, (360, 240))
+    image_show = image.copy()
+    cv2.line(image_show, (0, 378), (630, 378), (0, 0, 255), 2)
+    cv2.line(image_show, (630, 378), (376, 234), (0, 0, 255), 2)
+    cv2.line(image_show, (376, 234), (264, 234), (0, 0, 255), 2)
+    cv2.line(image_show, (264, 234), (0, 378), (0, 0, 255), 2)
+
+    image_show = cv2.resize(image_show, (360, 240))
 
     # show the frame
-    cv2.line(image_show, (180, 0), (180, 239), (0, 0, 255), 2)
+    # cv2.line(image_show, (180, 0), (180, 239), (0, 0, 255), 2)
     cv2.imshow("Frame", image_show)
     key = cv2.waitKey(1) & 0xFF
 
