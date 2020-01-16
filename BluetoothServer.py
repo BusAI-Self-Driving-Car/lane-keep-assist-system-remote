@@ -72,12 +72,18 @@ class BluetoothServer:
 
         self.image = None
 
+        self.is_connected = False
+
 
     def wait_for_client(self):
-        advertise_service(self.server, "RaspberryServer", service_id=self.uuid)
+        try:
+            advertise_service(self.server, "RaspberryServer", service_id=self.uuid)
+        except:
+            pass
         print("Waiting for connection")
         self.client_sock, self.client_info = self.server.accept()
         print("Accepted connection from: ", self.client_info)
+        self.is_connected = True
         return True
 
     def get_client_socket(self):
@@ -91,8 +97,13 @@ class BluetoothServer:
 
     def send(self, obj, state):
         if state == self.STATE_CUSTOM_SENDING:
-            if not self.is_settings_sending:
-                self.client_sock.send(obj)
+            if not self.is_settings_sending and self.client_sock is not None:
+                try:
+                    self.client_sock.send(obj)
+                except btcommon.BluetoothError:
+                    self.is_connected = False
+                    self.client_sock.close()
+
 
         elif state == self.STATE_IMAGE_SENDING:
             print("sending length", str(len(obj)))
@@ -103,9 +114,6 @@ class BluetoothServer:
             print("sent")
             print("range", math.ceil(len(obj) / self.single_img_byte_packet_size))
             self.client_sock.send(bytes(obj))
-            # for i in range(math.ceil(len(obj) / self.single_img_byte_packet_size)):
-            #     print("sending part", i)
-            #     self.client_sock.send(bytes(obj[i * self.single_img_byte_packet_size : (i+1) * self.single_img_byte_packet_size]))
             time.sleep(0.1)
 
         elif state == self.STATE_SETTINGS_SENDING:

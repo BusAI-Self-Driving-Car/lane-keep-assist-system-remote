@@ -59,22 +59,36 @@ class LaneDetection:
         if ret:
             marked_lane_image = self.mark_lane(image, left_fit_x, right_fit_x, fit_y)
             offset = self.get_offset(left_fit_x, right_fit_x, self.camera.get_image_size()[0] / 2)
-            marked_lane_image = self.mark_offset(marked_lane_image, offset)
 
-            if abs(offset) < self.min_m_offset_warn:
+            if offset > 0:
+                direction = "L"
+            elif offset == 0:
+                direction = "S"
+            else:
+                direction = "R"
+            # direction = "L " if offset > 0 else "R "
+
+            offset = abs(offset)
+
+            marked_lane_image = self.mark_offset(marked_lane_image, offset, direction)
+
+
+
+            if offset < self.min_m_offset_warn:
                 priority = 0
-            elif abs(offset) < self.min_m_offset_alert:
+            elif offset < self.min_m_offset_alert:
                 priority = 1
             else:
                 priority = 2
                 alert = True
         else:
-            marked_lane_image = self.mark_offset(image, " - ")
+            direction = "S"
+            marked_lane_image = self.mark_offset(image, " - ", direction)
             priority = 0
             offset = 0
 
         # marked_lane_image = self.camera.mark_roi(undistorted_image)
-        return marked_lane_image, alert, offset, priority
+        return marked_lane_image, alert, direction, offset, priority
 
     def find_lanes_rect(self, img_bin):
         image_size = self.camera.get_image_size()
@@ -283,11 +297,15 @@ class LaneDetection:
         marked_lane_image = cv2.addWeighted(undistorted_image, 1, color_mark, 0.3, 0)
         return marked_lane_image
 
-    def mark_offset(self, img, offset):
+    def mark_offset(self, img, offset, direction):
         out_img = img.copy()
         font = cv2.FONT_HERSHEY_SIMPLEX
-        text1 = str(offset) + "m"
-        cv2.putText(out_img, text1, (250, 100), font, 1, (255, 0, 0), 2)
+        out_text = str(offset) + "m"
+        if direction == "L":
+            out_text = "<<< " + out_text
+        elif direction == "R":
+            out_text = out_text + " >>>"
+        cv2.putText(out_img, out_text, (250, 100), font, 1, (255, 0, 0), 2)
         return out_img
 
     def get_color_thresholds_to_str(self):

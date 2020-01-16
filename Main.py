@@ -12,12 +12,9 @@ import picamera.array
 camera_resolution = (640, 480)
 screen_size = (360, 240)
 
-camera_resolution = (640, 480)
-screen_size = (360, 240)
-
 assistant_time_brake = 1 # seconds
 
-alert_time_brake = 2 # seconds
+# alert_time_brake = 2 # seconds
 
 capture_image = np.zeros(camera_resolution + tuple([3]), np.uint8)
 output_image = capture_image
@@ -32,13 +29,14 @@ showed_event.set()
 bluetooth_server = BluetoothServer()
 
 lane_detection = LaneDetection()
+bluetooth_server.set_lane_detection(lane_detection)
 
 
 
 class CameraCaptureThread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        # threading.Thread.setDaemon(self, True)
+        threading.Thread.setDaemon(self, True)
 
         self.camera = PiCamera()
         self.camera.resolution = camera_resolution
@@ -66,9 +64,8 @@ class CameraCaptureThread(threading.Thread):
             # print("Captured")
             self.raw_capture.truncate(0)
             if stop_event.is_set():
-                cv2.destroyAllWindows()
-                self.camera.close()
                 break
+        self.camera.close()
 
 
 class ImageProcessingThread(threading.Thread):
@@ -78,7 +75,7 @@ class ImageProcessingThread(threading.Thread):
 
         # self.lane_detection = LaneDetection()
 
-        self.alert_time = time.time()
+        # self.alert_time = time.time()
         self.assistant_time = time.time()
         self.fps_time = time.time()
 
@@ -87,19 +84,12 @@ class ImageProcessingThread(threading.Thread):
         while not stop_event.is_set():
             captured_event.wait()
             captured_event.clear()
-            output_image, alert, offset, priority = lane_detection.process(capture_image) # self.lane_detection.camera.mark_roi(capture_image) # self.lane_detection.process(capture_image)
+            output_image, alert, direction, offset, priority = lane_detection.process(capture_image) # self.lane_detection.camera.mark_roi(capture_image) # self.lane_detection.process(capture_image)
             fps = round(1. / (time.time() - self.fps_time), 1)
             output_image = self.mark_fps(output_image, fps)
             self.fps_time = time.time()
             if time.time() - self.assistant_time > assistant_time_brake:
-                direction = "L " if offset > 0 else "R "
-                # if abs(offset) < 0.2:
-                #     priority = 0
-                # elif abs(offset) < 0.39:
-                #     priority = 1
-                # else:
-                #     priority = 2
-                bluetooth_server.send("alert " + str(priority) + " " + direction + str(abs(offset)), BluetoothServer.STATE_CUSTOM_SENDING)
+                bluetooth_server.send("alert " + str(priority) + " " + direction + " " + str(abs(offset)), BluetoothServer.STATE_CUSTOM_SENDING)
 
                 self.assistant_time = time.time()
 
@@ -110,7 +100,7 @@ class ImageProcessingThread(threading.Thread):
         out_img = img.copy()
         font = cv2.FONT_HERSHEY_SIMPLEX
         text1 = str(fps) + " fps"
-        cv2.putText(out_img, text1, (500, 10), font, 0.75, (255, 0, 150), 2)
+        cv2.putText(out_img, text1, (500, 20), font, 0.75, (255, 0, 150), 2)
         return out_img
 
 
@@ -132,19 +122,38 @@ class OutputDisplayThread(threading.Thread):
 
             if key == ord("q"):
                 stop_event.set()
+                cv2.destroyAllWindows()
             # print("Showing")
+
+class BluetoothServerThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        threading.Thread.setDaemon(self, True)
+
+    def run(self):
+        while not stop_event.is_set():
+            if not bluetooth_server.is_connected:
+                bluetooth_server.wait_for_client()
+                bluetooth_server.initialize_communication_threads()
+                bluetooth_server.start_communication_threads()
+            time.sleep(1)
+
+
 
 
 camera_capture_thread = CameraCaptureThread()
 image_processing_thread = ImageProcessingThread()
 output_display_thread = OutputDisplayThread()
+bluetooth_server_thread = BluetoothServerThread()
 
-bluetooth_server.wait_for_client()
-# bluetooth_server.set_camera(image_processing_thread.lane_detection.camera)
-bluetooth_server.set_lane_detection(lane_detection)
-bluetooth_server.initialize_communication_threads()
-bluetooth_server.start_communication_threads()
+# bluetooth_server.wait_for_client()
+# # bluetooth_server.set_camera(image_processing_thread.lane_detection.camera)
+# bluetooth_server.initialize_communication_threads()
+# bluetooth_server.start_communication_threads()
 
 camera_capture_thread.start()
 image_processing_thread.start()
 output_display_thread.start()
+bluetooth_server_thread.start()
+
+
