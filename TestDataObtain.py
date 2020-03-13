@@ -29,7 +29,7 @@ def capture_image(event, x, y, flags, param):
 camera = PiCamera()
 camera.resolution = camera_resolution
 camera.framerate = 25
-camera.rotation = 90
+camera.rotation = 180
 rawCapture = PiRGBArray(camera, size=camera_resolution)
 
 i = 1
@@ -53,16 +53,25 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
             out = cv2.VideoWriter('video_' + timestr + '.mp4', cv2.VideoWriter_fourcc('M','J','P','G'), 10, camera_resolution)
             if_opened_done = True
             if_closed_done = False
+            print("WRITING")
         out.write(image)
     else:
         if not if_closed_done:
             out.release()
+            print("SAVED")
             if_closed_done = True
             if_opened_done = False
 
-    image_show = cv2.resize(image, (360, 240))
+    image_show = image.copy()
+    cv2.line(image_show, (0, 378), (630, 378), (0, 0, 255), 2)
+    cv2.line(image_show, (630, 378), (376, 234), (0, 0, 255), 2)
+    cv2.line(image_show, (376, 234), (264, 234), (0, 0, 255), 2)
+    cv2.line(image_show, (264, 234), (0, 378), (0, 0, 255), 2)
+
+    image_show = cv2.resize(image_show, (360, 240))
 
     # show the frame
+    # cv2.line(image_show, (180, 0), (180, 239), (0, 0, 255), 2)
     cv2.imshow("Frame", image_show)
     key = cv2.waitKey(1) & 0xFF
 

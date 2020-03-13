@@ -16,11 +16,7 @@ class Camera:
     chessboard_pattern = (7, 9)
     calibrate_imgs_path = glob.glob("./ccalib-test-images-5/*.jpg")
 
-    # perspective_src_points = np.float32([[16, image_size[1]], [605, image_size[1]],
-    #                             [384, image_size[1] * 0.55], [256, image_size[1] * 0.55]])
-
-    perspective_src_points = np.float32([[0, 225], [397, 225],
-                                [333, 134], [218, 134]])
+    perspective_src_points = []
 
     perspective_dst_points = np.float32([[image_size[0] / 4, image_size[1]],
                                 [image_size[0] * 3 / 4, image_size[1]],
@@ -75,6 +71,7 @@ class Camera:
         self.optimal_matrix = np.genfromtxt('cameraOptimalMatrix.csv')
         self.distortion_coeffs = np.genfromtxt('cameraDistortionCoeffs.csv')
         self.ROI = np.genfromtxt('cameraROI.csv')
+        self.perspective_src_points = np.genfromtxt('perspectiveSourcePoints.csv', dtype='float32')
 
     def undistort(self, img):
         img_undist = cv2.undistort(img, self.matrix, self.distortion_coeffs, None, self.optimal_matrix)
@@ -101,6 +98,13 @@ class Camera:
     def lane_binary(self):
         pass
 
+    def mark_roi(self, img):
+        out_img = img.copy()
+        for i in range(4):
+            out_img = cv2.line(out_img, tuple(self.perspective_src_points[i % 4]),
+                           tuple(self.perspective_src_points[(i + 1) % 4]), (0, 0, 255), 2)
+        return out_img
+
 
     def color_transforms(self, img):
         b, g, r = cv2.split(img)
@@ -124,5 +128,22 @@ class Camera:
 
     def get_image_size(self):
         return self.image_size
+
+    def get_perspective_src_points_to_str(self):
+        string = str(int(self.perspective_src_points[0][0])) + " " + str(int(self.perspective_src_points[0][1])) + " "\
+              + str(int(self.perspective_src_points[1][0])) + " " + str(int(self.perspective_src_points[1][1])) + " "\
+              + str(int(self.perspective_src_points[2][0])) + " " + str(int(self.perspective_src_points[2][1])) + " "\
+              + str(int(self.perspective_src_points[3][0])) + " " + str(int(self.perspective_src_points[3][1]))
+        return string
+
+    def set_perspective_src_points_from_str(self, pts):
+        src_pts = np.float32([[float(pts[0]), float(pts[1])], [float(pts[2]), float(pts[3])],
+                             [float(pts[4]), float(pts[5])], [float(pts[6]), float(pts[7])]])
+        self.perspective_src_points = src_pts
+
+    def save_perspective_src_points(self):
+        np.savetxt('perspectiveSourcePoints.csv', self.perspective_src_points)
+
+
 
 
